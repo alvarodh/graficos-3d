@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Practica 1</title>
+  </head>
+  <body onload="init()">
+    <canvas id="myCanvas" width="1080" height="720"></canvas>
+  </body>
+  <script id="shaderVs" type="x-shader/x-vertex">
+    // como es el objeto a dibujar
+    attribute vec3 aPosition;
+    attribute float aSize;
+    void main() {
+      gl_Position = vec4(aPosition, 1.0);
+      gl_PointSize = aSize;
+    }
+  </script>
+  <script id="shaderFs" type="x-shader/x-fragment">
+    // como se distribuye el color en el objeto
+    precision mediump float;
+    uniform vec3 aColor;
+    void main() {
+      gl_FragColor = vec4(aColor, 1.0);
+    }
+  </script>
+  <script>
+    var aPositionList = [],
+        aSizeList = [],
+        aColorList = [];
+
+    function init() {
+      var canvas = document.getElementById("myCanvas"),
+          gl = canvas.getContext("webgl");
+
+      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      var fs = document.getElementById('shaderFs').innerHTML,
+          vs = document.getElementById('shaderVs').innerHTML;
+
+      if (!initShaders(gl, vs, fs)) {
+        console.log('Failed to intialize shaders.');
+        return;
+      }
+
+      canvas.onmousedown = function (ev) {
+        click(ev, gl, canvas);
+      };
+    }
+
+    function click(ev, gl, canvas) {
+      var rect = ev.target.getBoundingClientRect(),
+          clickX = ev.clientX - rect.left,
+          clickY = ev.clientY - rect.top,
+          halfCanvasWidth = canvas.width / 2,
+          halfCanvasHeight = canvas.height / 2;
+
+      var x = (clickX - halfCanvasWidth) / halfCanvasWidth,
+          y = (halfCanvasHeight - clickY) / halfCanvasHeight,
+          xyz = [x, y, 0];
+
+      aPositionList.push(xyz)
+      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      if (x > 0.7 || y > 0.7 || x < -0.7 || y < -0.7) {
+        aSizeList.push(20.0);
+        aColorList.push([1.0,1.0,1.0]);
+      } else {
+        aSizeList.push(10.0);
+        if (x >= 0.0 && y >= 0.0) {
+          // segundo cuadrante
+          aColorList.push([1.0,0.0,0.0]);
+        } else if (x >= 0.0 && y < 0.0) {
+          // cuarto cuadrante
+          aColorList.push([0.0,1.0,0.0]);
+        } else if (x < 0.0 && y >= 0.0) {
+          // primer cuadrante
+          aColorList.push([1.0,0.0,1.0]);
+        } else {
+          // tercer cuadrante
+          aColorList.push([0.0,0.0,1.0]);
+        }
+      }
+
+      var aPosition = gl.getAttribLocation(gl.program, "aPosition"),
+          aSize = gl.getAttribLocation(gl.program, "aSize"),
+          aColor = gl.getUniformLocation(gl.program, "aColor");
+
+      for (var i = 0; i < aPositionList.length; i++) {
+        gl.vertexAttrib3fv(aPosition, aPositionList[i]);
+        gl.vertexAttrib1f(aSize, aSizeList[i]);
+        gl.uniform3fv(aColor, aColorList[i]);
+        gl.drawArrays(gl.POINTS, 0, 1);
+      }
+
+    }
+
+    function initShaders(gl, vs_source, fs_source) {
+      var vertexShader = makeShader(gl, vs_source, gl.VERTEX_SHADER),
+          fragmentShader = makeShader(gl, fs_source, gl.FRAGMENT_SHADER),
+          glProgram = gl.createProgram();
+      gl.attachShader(glProgram, vertexShader);
+      gl.attachShader(glProgram, fragmentShader);
+      gl.linkProgram(glProgram);
+      if (!gl.getProgramParameter(glProgram, gl.LINK_STATUS)) {
+        alert("Unable to initialize the shader program");
+        return false;
+      }
+      gl.useProgram(glProgram);
+      gl.program = glProgram;
+      return true;
+    }
+
+    function makeShader(gl, src, type) {
+      var shader = gl.createShader(type);
+      gl.shaderSource(shader, src);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        alert("Error compiling shader: " + gl.getShaderInfoLog(shader));
+        return;
+      }
+      return shader;
+    }
+  </script>
+</html>
