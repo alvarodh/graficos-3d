@@ -1,7 +1,7 @@
 # graficos-3d
 Prácticas de asignatura Gráficos y Visualización en 3-D
 
-Ejercicio 3:
+Ejercicio 3:\n
   PDF: Dibujar_puntos_de_color_haciendo_click_en_canvas.pdf
   HTML: puntos_de_colores.html
   
