@@ -206,7 +206,7 @@
               var image = new Image();
               image.src = 'deathstar.png';
               image.onload = function () {
-                  loadTexture(gl, "u_Sampler", image, 0, false);
+                  loadTexture(gl, "u_Sampler", image, 0, true);
                   drawScene();
               };
           }
