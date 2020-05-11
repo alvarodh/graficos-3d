@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Práctica 3</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+  </head>
+  <body onload="init()">
+    <canvas id="myCanvas" width="720" height="720"></canvas><br>
+    <b>Rotation</b>
+    <input type="checkbox" name="rotation" checked><br>
+    <b>WebGL primitive</b>
+    <input type="radio" name="primitive" value="triangles" checked> Triangles
+    <input type="radio" name="primitive" value="lines"> Lines<br>
+    <b>Projection type</b>
+    <input type="radio" name="projection" value="perspective" checked> Perspective
+    <input type="radio" name="projection" value="orthographic"> Orthographic<br>
+
+    <script id="shaderVs" type="x-shader/x-vertex">
+      attribute vec4 a_Position;
+      attribute vec3 a_Color;
+      uniform mat4 u_pMatrix;
+      uniform mat4 u_vMatrix;
+      uniform mat4 u_mvMatrix;
+      varying highp vec4 v_Color;
+      void main() {
+        gl_Position = u_pMatrix * u_vMatrix * u_mvMatrix * a_Position;
+        v_Color = vec4(a_Color, 1.0);
+      }
+    </script>
+
+    <script id="shaderFs" type="x-shader/x-fragment">
+      varying highp vec4 v_Color;
+      void main() {
+        gl_FragColor = v_Color;
+      }
+    </script>
+
+    <script>
+
+      var gl = null,
+          canvas = null,
+          count = 0.0,
+          z = -3;
+
+      document.addEventListener('wheel', function (event) {
+        var projectionValue = document.querySelector('input[name="projection"]:checked').value;
+        switch (projectionValue) {
+          case "perspective":
+            z = event.wheelDelta > 0 ? z + 1 : z - 1;
+            break;
+          default:
+            //
+        }
+        console.log(z)
+      });
+
+      function init() {
+
+        canvas = document.getElementById("myCanvas");
+        gl = canvas.getContext("webgl");
+
+        if (!gl) {
+          console.log("Failed to get the rendering context for WebGL");
+          return;
+        }
+
+        var vs = document.getElementById('shaderVs').innerHTML,
+            fs = document.getElementById('shaderFs').innerHTML;
+
+        initShaders(gl, vs, fs); initVertexShader(gl);
+
+        gl.clearColor(0.0, 0.0, 0.0, 1.0); gl.enable(gl.DEPTH_TEST);
+
+        drawScene();
+      }
+
+      function drawScene() {
+
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        var rotationChecked = document.querySelector('input[name="rotation"]:checked'),
+            primitiveValue = document.querySelector('input[name="primitive"]:checked').value;
+
+        initProjection(gl, canvas);
+
+        var mvMatrix = mat4.fromRotation(mat4.create(), count, [0.5, 0.5, 0.5]),
+            u_mvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
+
+        gl.uniformMatrix4fv(u_mvMatrix, false, mvMatrix);
+
+        switch (primitiveValue) {
+          case "triangles":
+            primitive = gl.TRIANGLES;
+            break;
+          case "lines":
+            primitive = gl.LINES;
+            break;
+          default:
+            //
+        }
+
+        gl.drawElements(primitive, 6 * 2 * 3, gl.UNSIGNED_SHORT, 0);
+
+        if (rotationChecked) {
+          count += 0.01;
+        }
+
+        requestAnimationFrame(drawScene);
+      }
+
+      function initProjection(gl, canvas) {
+
+        var projectionValue = document.querySelector('input[name="projection"]:checked').value,
+            u_pMatrix = gl.getUniformLocation(gl.program, "u_pMatrix"),
+            u_vMatrix = gl.getUniformLocation(gl.program, "u_vMatrix"),
+            ratio = canvas.width / canvas.height;
+
+        switch (projectionValue) {
+          case "perspective":
+            var pMatrix = mat4.perspective(mat4.create(), 150, ratio, 0.1, 100),
+                vMatrix = mat4.lookAt(mat4.create(), [0, 0, z], [0, 0, 0], [0, 1, 0]);
+            break;
+          case "orthographic":
+            var pMatrix = mat4.ortho(mat4.create(), -ratio, ratio, -1.0, 1.0, 1.0, -1.0),
+                vMatrix = mat4.create();
+            break;
+          default:
+            //
+        }
+
+        gl.uniformMatrix4fv(u_pMatrix, false, pMatrix);
+        gl.uniformMatrix4fv(u_vMatrix, false, vMatrix);
+      }
+
+      function initVertexShader(gl) {
+
+        var x = 0.5, y = 0.5, z = 0.5, //       TAMAÑO CARAS CUBO
+        //   R        G        B
+            c1r = 1, c1g = 1, c1b = 0, // COLOR CARA 1 → AMARILLO
+            c2r = 0, c2g = 0, c2b = 1, // COLOR CARA 2 →     AZUL
+            c3r = 0, c3g = 1, c3b = 1, // COLOR CARA 3 →     CYAN
+            c4r = 1, c4g = 0, c4b = 0, // COLOR CARA 4 →     ROJO
+            c5r = 1, c5g = 0, c5b = 1, // COLOR CARA 5 →  MAGENTA
+            c6r = 0, c6g = 1, c6b = 0; // COLOR CARA 6 →    VERDE
+
+        var vertexesAndColors = [
+          // CARA 1
+          -x, -y, -z, c1r, c1g, c1b, // vértice  1
+           x, -y, -z, c1r, c1g, c1b, // vértice  2
+           x,  y, -z, c1r, c1g, c1b, // vértice  3
+          -x,  y, -z, c1r, c1g, c1b, // vértice  4
+          // CARA 2
+          -x, -y,  z, c2r, c2g, c2b, // vértice  5
+           x, -y,  z, c2r, c2g, c2b, // vértice  6
+           x,  y,  z, c2r, c2g, c2b, // vértice  7
+          -x,  y,  z, c2r, c2g, c2b, // vértice  8
+          // CARA 3
+          -x, -y, -z, c3r, c3g, c3b, // vértice  9
+          -x,  y, -z, c3r, c3g, c3b, // vértice 10
+          -x,  y,  z, c3r, c3g, c3b, // vértice 11
+          -x, -y,  z, c3r, c3g, c3b, // vértice 12
+          // CARA 4
+           x, -y, -z, c4r, c4g, c4b, // vértice 13
+           x,  y, -z, c4r, c4g, c4b, // vértice 14
+           x,  y,  z, c4r, c4g, c4b, // vértice 15
+           x, -y,  z, c4r, c4g, c4b, // vértice 16
+          // CARA 5
+          -x, -y, -z, c5r, c5g, c5b, // vértice 17
+          -x, -y,  z, c5r, c5g, c5b, // vértice 18
+           x, -y,  z, c5r, c5g, c5b, // vértice 19
+           x, -y, -z, c5r, c5g, c5b, // vértice 20
+          // CARA 6
+          -x,  y, -z, c6r, c6g, c6b, // vértice 21
+          -x,  y,  z, c6r, c6g, c6b, // vértice 22
+           x,  y,  z, c6r, c6g, c6b, // vértice 23
+           x,  y, -z, c6r, c6g, c6b  // vértice 24
+        ];
+
+        var indexes = [
+           0,  1,  2, // triangulo  1
+           0,  2,  3, // triangulo  2
+           4,  5,  6, // triangulo  3
+           4,  6,  7, // triangulo  4
+           8,  9, 10, // triangulo  5
+           8, 10, 11, // triangulo  6
+          12, 13, 14, // triangulo  7
+          12, 14, 15, // triangulo  8
+          16, 17, 18, // triangulo  9
+          16, 18, 19, // triangulo 10
+          20, 21, 22, // triangulo 11
+          20, 22, 23  // triangulo 12
+        ];
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexesAndColors), gl.STATIC_DRAW);
+
+        var vertexPositionAttribute = gl.getAttribLocation(gl.program, "a_Position"),
+            vertexColorAttribute = gl.getAttribLocation(gl.program, "a_Color");
+
+        gl.enableVertexAttribArray(vertexPositionAttribute);
+        gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 4 * (3 + 3), 0);
+        gl.enableVertexAttribArray(vertexColorAttribute);
+        gl.vertexAttribPointer(vertexColorAttribute, 3, gl.FLOAT, false, 4 * (3 + 3), 4 * 3);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexes), gl.STATIC_DRAW);
+      }
+
+      function initShaders(gl, vs_source, fs_source) {
+
+        var vertexShader = makeShader(gl, vs_source, gl.VERTEX_SHADER),
+            fragmentShader = makeShader(gl, fs_source, gl.FRAGMENT_SHADER),
+            glProgram = gl.createProgram();
+
+        gl.attachShader(glProgram, vertexShader);
+        gl.attachShader(glProgram, fragmentShader);
+        gl.linkProgram(glProgram);
+        gl.useProgram(glProgram);
+
+        gl.program = glProgram;
+      }
+
+      function makeShader(gl, src, type) {
+
+        var shader = gl.createShader(type);
+
+        gl.shaderSource(shader, src);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          alert("Error compiling shader: " + gl.getShaderInfoLog(shader));
+          return;
+
+        }
+        return shader;
+      }
+    </script>
+  </body>
+</html>

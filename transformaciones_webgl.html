@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+  <head>
+    <meta charset="utf-8">
+    <title>Práctica 2</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+  </head>
+
+  <body onload="init()">
+    <canvas id="myCanvas" width="720" height="720"></canvas>
+    <br>
+    Step: <input type="text" value="0.01" id="step">
+  </body>
+
+  <script id="shaderVs" type="x-shader/x-vertex">
+    attribute vec4 a_Position; // forma del objeto
+    uniform mat4 u_mvMatrix;   // movimiento respecto del origen de coordenadas
+    void main() {
+      gl_Position = u_mvMatrix * a_Position;
+    }
+  </script>
+
+  <script id="shaderFs" type="x-shader/x-fragment">
+    void main() {
+      gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+    }
+  </script>
+
+  <script>
+
+    var gl,
+        move = [0.0, 0.0, 0.0], // movimiento respecto del origen
+        scale = [1.0, 1.0, 1.0], // escalado
+        alpha = 0.0, // angulo sobre eje Z
+        square = [
+          -0.25,  0.25, 0, // Vertice #1
+           0.25, -0.25, 0, // Vertice #2
+          -0.25, -0.25, 0, // Vertice #3
+           0.25, -0.25, 0, // Vertice #4
+          -0.25,  0.25, 0, // Vertice #5
+           0.25,  0.25, 0, // Vertice #6
+
+        ];
+
+    function init() {
+      var canvas = document.getElementById("myCanvas");
+      gl = canvas.getContext("webgl");
+      if (!gl) {
+        console.log("Failed to get the rendering context for WebGL");
+        return;
+      }
+      var vs = document.getElementById('shaderVs').innerHTML,
+          fs = document.getElementById('shaderFs').innerHTML;
+      initShaders(gl, vs, fs);
+      initVertexBuffers(gl);
+      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      drawScene(mat4.create(), square);
+      document.onkeydown = function (ev) {
+        var step = new Number(document.getElementById("step").value),
+            clicked = true;
+        switch (ev.keyCode) {
+          case 37: // mover izquierda
+            move[0] -= step;
+            break;
+          case 39: // mover derecha
+            move[0] += step;
+            break;
+          case 38: // mover arriba
+            move[1] += step;
+            break;
+          case 40: // mover abajo
+            move[1] -= step;
+            break;
+          case 33: // aumentar escala
+            scale[0] += step; scale[1] += step;
+            break;
+          case 34: // disminuir escala
+            scale[0] -= step; scale[1] -= step;
+            break;
+          case 36: // giro negativo en Z
+            alpha -= step;
+            break;
+          case 35: // giro positivo en Z
+            alpha += step;
+            break;
+          default:
+            clicked = false;
+        }
+        if (clicked) {
+          var mv_Matrix = mat4.fromTranslation(mat4.create(), move), // movimiento
+              sc_Matrix = mat4.fromScaling(mat4.create(), scale),    // reescalado
+              rt_Matrix = mat4.fromZRotation(mat4.create(), alpha);   // rotacion
+
+          var matrix = mat4.multiply(mat4.create(), mv_Matrix, sc_Matrix);
+          drawScene(mat4.multiply(mat4.create(), matrix, rt_Matrix));
+        }
+      };
+    }
+
+    function drawScene(matrix) {
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      var u_mvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
+      gl.uniformMatrix4fv(u_mvMatrix, false, matrix);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    function initVertexBuffers(gl) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(square), gl.STATIC_DRAW);
+      var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+      gl.vertexAttrib3fv(a_Position, square);
+      gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(a_Position);
+    }
+
+
+    function initShaders(gl, vs_source, fs_source) {
+      var vertexShader = makeShader(gl, vs_source, gl.VERTEX_SHADER),
+          fragmentShader = makeShader(gl, fs_source, gl.FRAGMENT_SHADER);
+      var glProgram = gl.createProgram();
+      gl.attachShader(glProgram, vertexShader);
+      gl.attachShader(glProgram, fragmentShader);
+      gl.linkProgram(glProgram);
+      gl.useProgram(glProgram);
+      gl.program = glProgram;
+    }
+
+    function makeShader(gl, src, type) {
+      var shader = gl.createShader(type);
+      gl.shaderSource(shader, src);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        alert("Error compiling shader: " + gl.getShaderInfoLog(shader));
+        return;
+      }
+      return shader;
+    }
+
+  </script>
+
+</html>
